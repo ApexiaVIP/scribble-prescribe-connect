@@ -13,10 +13,69 @@ import {
   Building2,
   Clock,
   Star,
-  CheckCircle2
+  CheckCircle2,
+  MapPin,
+  BadgeCheck
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const prescriberTypeLabels: Record<string, string> = {
+  gp: 'GP',
+  pharmacist: 'Pharmacist',
+  nurse_prescriber: 'Nurse Prescriber',
+  dentist: 'Dentist',
+  other: 'Other'
+};
 
 export default function Landing() {
+  // Fetch available prescribers with profiles
+  const { data: prescribers, isLoading } = useQuery({
+    queryKey: ['available-prescribers'],
+    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Get prescribers who have availability today or in the future
+      const { data: availablePrescribers, error } = await supabase
+        .from('prescribers')
+        .select(`
+          id,
+          prescriber_type,
+          daily_rate,
+          hourly_rate,
+          location,
+          verification_status,
+          user_id,
+          availability!inner (
+            date,
+            availability_type,
+            is_booked
+          )
+        `)
+        .eq('is_active', true)
+        .eq('verification_status', 'approved')
+        .gte('availability.date', today)
+        .eq('availability.is_booked', false)
+        .limit(6);
+
+      if (error) throw error;
+
+      // Get profiles for these prescribers
+      const userIds = availablePrescribers?.map(p => p.user_id) || [];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, avatar_url')
+        .in('user_id', userIds);
+
+      // Merge profiles with prescribers
+      return availablePrescribers?.map(p => ({
+        ...p,
+        profile: profiles?.find(prof => prof.user_id === p.user_id)
+      })) || [];
+    }
+  });
+
   return (
     <Layout>
       {/* Hero Section */}
@@ -204,8 +263,119 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Prescriber Types */}
+      {/* Available Now Section */}
       <section className="py-20 md:py-28">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <Badge variant="outline" className="mb-4">Available Now</Badge>
+            <h2 className="text-3xl md:text-5xl font-bold mb-4">
+              Prescribers Ready to Work
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Verified professionals with open availability. Book today.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {isLoading ? (
+              // Skeleton loading state
+              Array.from({ length: 6 }).map((_, i) => (
+                <Card key={i} className="overflow-hidden">
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                      <Skeleton className="w-16 h-16 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-5 w-32" />
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-4 w-28" />
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t flex items-center justify-between">
+                      <Skeleton className="h-6 w-20" />
+                      <Skeleton className="h-9 w-24" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : prescribers && prescribers.length > 0 ? (
+              prescribers.map((prescriber) => (
+                <Card key={prescriber.id} className="overflow-hidden hover-lift group">
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0">
+                        <Stethoscope className="h-7 w-7 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold truncate">
+                            {prescriber.profile?.full_name || 'Verified Prescriber'}
+                          </h4>
+                          {prescriber.verification_status === 'approved' && (
+                            <BadgeCheck className="h-4 w-4 text-primary shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {prescriberTypeLabels[prescriber.prescriber_type]}
+                        </p>
+                        {prescriber.location && (
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                            <MapPin className="h-3 w-3" />
+                            <span className="truncate">{prescriber.location}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t flex items-center justify-between">
+                      <div>
+                        {prescriber.daily_rate ? (
+                          <span className="font-bold text-lg">
+                            £{prescriber.daily_rate}<span className="text-sm font-normal text-muted-foreground">/day</span>
+                          </span>
+                        ) : prescriber.hourly_rate ? (
+                          <span className="font-bold text-lg">
+                            £{prescriber.hourly_rate}<span className="text-sm font-normal text-muted-foreground">/hr</span>
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Contact for rates</span>
+                        )}
+                      </div>
+                      <Button size="sm" variant="outline" asChild className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                        <Link to="/auth?mode=signup">View Profile</Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              // Empty state
+              <div className="col-span-full text-center py-12">
+                <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                  <Stethoscope className="h-10 w-10 text-muted-foreground" />
+                </div>
+                <h4 className="font-semibold mb-2">No prescribers available yet</h4>
+                <p className="text-muted-foreground mb-4">Be the first to join as a prescriber!</p>
+                <Button asChild>
+                  <Link to="/auth?mode=signup">Join as Prescriber</Link>
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {prescribers && prescribers.length > 0 && (
+            <div className="text-center mt-10">
+              <Button size="lg" variant="outline" asChild>
+                <Link to="/browse">
+                  View All Prescribers
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Prescriber Types */}
+      <section className="py-20 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <Badge variant="outline" className="mb-4">Prescriber Types</Badge>
@@ -224,15 +394,17 @@ export default function Landing() {
               { title: 'Nurse Prescribers', description: 'Qualified NMC registered' },
               { title: 'Dentists', description: 'Dental Prescribers' }
             ].map((type, i) => (
-              <Card key={i} className="text-center hover-lift cursor-pointer">
-                <CardContent className="p-6">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto mb-4">
-                    <Stethoscope className="h-8 w-8 text-primary" />
-                  </div>
-                  <h4 className="font-bold mb-1">{type.title}</h4>
-                  <p className="text-sm text-muted-foreground">{type.description}</p>
-                </CardContent>
-              </Card>
+              <Link key={i} to="/browse">
+                <Card className="text-center hover-lift cursor-pointer group h-full">
+                  <CardContent className="p-6">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto mb-4 group-hover:from-primary/20 group-hover:to-primary/10 transition-colors">
+                      <Stethoscope className="h-8 w-8 text-primary" />
+                    </div>
+                    <h4 className="font-bold mb-1">{type.title}</h4>
+                    <p className="text-sm text-muted-foreground">{type.description}</p>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         </div>
@@ -256,7 +428,7 @@ export default function Landing() {
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild className="text-lg px-8 h-14">
-                <Link to="/how-it-works">Learn More</Link>
+                <Link to="/browse">Browse Prescribers</Link>
               </Button>
             </div>
           </div>
