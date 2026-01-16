@@ -45,7 +45,7 @@ export function Navbar() {
             <Link to="/browse" className="text-muted-foreground hover:text-foreground transition-colors">
               Find Prescribers
             </Link>
-            <Link to="/how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/browse" className="text-muted-foreground hover:text-foreground transition-colors">
               How It Works
             </Link>
           </div>
@@ -118,7 +118,7 @@ export function Navbar() {
               Find Prescribers
             </Link>
             <Link 
-              to="/how-it-works" 
+              to="/browse" 
               className="block text-muted-foreground hover:text-foreground"
               onClick={() => setMobileMenuOpen(false)}
             >

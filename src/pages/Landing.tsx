@@ -340,7 +340,7 @@ export default function Landing() {
                         )}
                       </div>
                       <Button size="sm" variant="outline" asChild className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                        <Link to="/auth?mode=signup">View Profile</Link>
+                        <Link to="/browse">View Profile</Link>
                       </Button>
                     </div>
                   </CardContent>
