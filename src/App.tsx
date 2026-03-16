@@ -7,6 +7,9 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Browse from "./pages/Browse";
+import PrescriberOnboarding from "./pages/PrescriberOnboarding";
+import PrescriberDashboard from "./pages/PrescriberDashboard";
+import BusinessDashboard from "./pages/BusinessDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +25,9 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/browse" element={<Browse />} />
+            <Route path="/prescriber/onboarding" element={<PrescriberOnboarding />} />
+            <Route path="/prescriber/dashboard" element={<PrescriberDashboard />} />
+            <Route path="/business/dashboard" element={<BusinessDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

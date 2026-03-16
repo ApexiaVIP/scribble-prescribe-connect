@@ -39,8 +39,19 @@ export default function Auth() {
 
   useEffect(() => {
     if (user && userRole) {
-      const redirectTo = userRole === 'prescriber' ? '/prescriber/dashboard' : '/business/dashboard';
-      navigate(redirectTo);
+      if (userRole === 'prescriber') {
+        // Check if prescriber has completed onboarding
+        supabase
+          .from('prescribers')
+          .select('id')
+          .eq('user_id', user.id)
+          .single()
+          .then(({ data }) => {
+            navigate(data ? '/prescriber/dashboard' : '/prescriber/onboarding');
+          });
+      } else {
+        navigate('/business/dashboard');
+      }
     }
   }, [user, userRole, navigate]);
 
