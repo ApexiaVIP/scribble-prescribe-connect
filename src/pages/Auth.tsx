@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,8 +40,19 @@ export default function Auth() {
 
   useEffect(() => {
     if (user && userRole) {
-      const redirectTo = userRole === 'prescriber' ? '/prescriber/dashboard' : '/business/dashboard';
-      navigate(redirectTo);
+      if (userRole === 'prescriber') {
+        // Check if prescriber has completed onboarding
+        supabase
+          .from('prescribers')
+          .select('id')
+          .eq('user_id', user.id)
+          .single()
+          .then(({ data }) => {
+            navigate(data ? '/prescriber/dashboard' : '/prescriber/onboarding');
+          });
+      } else {
+        navigate('/business/dashboard');
+      }
     }
   }, [user, userRole, navigate]);
 
