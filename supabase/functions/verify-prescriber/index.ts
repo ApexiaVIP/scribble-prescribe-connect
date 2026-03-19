@@ -34,8 +34,8 @@ Deno.serve(async (req) => {
     let registerType = '';
 
     if (prescriber_type === 'gp' || prescriber_type === 'other' || prescriber_type === 'dentist') {
-      // GMC verification - scrape the GMC register search results
-      const gmcUrl = `https://www.gmc-uk.org/registration-and-licensing/the-medical-register/a-doctor-on-the-register?query=${registration_number}`;
+      // GMC verification - use the new register page with Firecrawl actions
+      const gmcUrl = 'https://www.gmc-uk.org/registration-and-licensing/our-registers';
       
       console.log('Scraping GMC register for:', registration_number);
       
@@ -48,7 +48,14 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           url: gmcUrl,
           formats: ['markdown'],
-          waitFor: 3000,
+          waitFor: 2000,
+          actions: [
+            { type: 'click', selector: '#cookieBannerRejectAllButton' },
+            { type: 'wait', milliseconds: 500 },
+            { type: 'write', selector: '#searchForRegistrant', text: String(registration_number) },
+            { type: 'click', selector: '#basicRegistrantSearchButton' },
+            { type: 'wait', milliseconds: 5000 },
+          ],
         }),
       });
 
@@ -56,20 +63,26 @@ Deno.serve(async (req) => {
       const markdown = data?.data?.markdown || data?.markdown || '';
 
       console.log('GMC scrape result length:', markdown.length);
+      console.log('GMC scrape preview:', markdown.substring(0, 500));
 
-      // Parse the GMC result - look for registration status
       if (markdown.length > 0) {
-        // Check if the page contains registration info (not a "no results" page)
+        // Check for registration info in the search results
         const hasRegistration = markdown.includes('Registered with a licence to practise') || 
                                 markdown.includes('Registered without a licence to practise') ||
-                                markdown.includes('Registration status');
+                                markdown.includes('Registration status') ||
+                                markdown.includes('registered with a licence') ||
+                                markdown.includes('Status:') ||
+                                (markdown.includes(String(registration_number)) && markdown.includes('egister'));
         
-        if (hasRegistration) {
-          verified = markdown.includes('Registered with a licence to practise');
-          registrationStatus = verified ? 'Registered with licence' : 'Registered without licence';
+        const is404 = markdown.includes("can't find the page") || markdown.includes('404');
+        
+        if (hasRegistration && !is404) {
+          verified = markdown.includes('Registered with a licence to practise') || 
+                     markdown.includes('registered with a licence');
+          registrationStatus = verified ? 'Registered with licence' : 'Found on register';
           
-          // Try to extract the doctor's name from the page
-          const nameMatch = markdown.match(/(?:Dr |Doctor )?([A-Z][a-z]+ (?:[A-Z][a-z]+ )*[A-Z][a-z]+)/);
+          // Try to extract the doctor's name
+          const nameMatch = markdown.match(/(?:Dr |Doctor )([A-Z][a-zA-Z'-]+(?: [A-Z][a-zA-Z'-]+)+)/);
           if (nameMatch) {
             registrantName = nameMatch[1];
           }
@@ -78,7 +91,7 @@ Deno.serve(async (req) => {
         }
       }
     } else if (prescriber_type === 'pharmacist') {
-      // GPhC verification - scrape the GPhC register
+      // GPhC verification
       const gphcUrl = `https://www.pharmacyregulation.org/registers/pharmacist/registrationnumber/${registration_number}`;
       
       console.log('Scraping GPhC register for:', registration_number);
@@ -118,7 +131,6 @@ Deno.serve(async (req) => {
         }
       }
     } else if (prescriber_type === 'nurse_prescriber') {
-      // NMC - we don't auto-verify nurses, flag for manual review
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -139,12 +151,10 @@ Deno.serve(async (req) => {
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
         const supabase = createClient(supabaseUrl, supabaseKey);
 
-        // Get user from JWT
         const token = authHeader.replace('Bearer ', '');
         const { data: { user } } = await supabase.auth.getUser(token);
 
         if (user) {
-          // Update prescriber verification status
           await supabase
             .from('prescribers')
             .update({ verification_status: 'approved' })
