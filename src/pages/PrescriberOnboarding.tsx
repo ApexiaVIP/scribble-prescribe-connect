@@ -202,13 +202,27 @@ export default function PrescriberOnboarding() {
     }
   };
 
+  const finalizeProfessionalVerification = async () => {
+    if (!verificationResult?.verified) return true;
+
+    const { error } = await supabase.functions.invoke('verify-prescriber', {
+      body: {
+        registration_number: registrationNumber.trim(),
+        prescriber_type: prescriberType,
+        full_name: user?.user_metadata?.full_name || '',
+      },
+    });
+
+    if (error) throw error;
+    return true;
+  };
+
   const handleSubmitProfile = async () => {
     if (!user) return;
 
     setLoading(true);
 
     try {
-      // verification_status is always 'pending' on insert - approval happens server-side only
       const { error } = await supabase.from('prescribers').insert({
         user_id: user.id,
         prescriber_type: prescriberType,
@@ -222,7 +236,7 @@ export default function PrescriberOnboarding() {
         sectors: sectors.length > 0 ? sectors : null,
         regions_covered: regionsCovered ? regionsCovered.split(',').map(r => r.trim()).filter(Boolean) : null,
         availability_types: availabilityTypes.length > 0 ? availabilityTypes : null,
-        verification_status: 'pending' as any,
+        verification_status: 'pending' as const,
         is_active: true,
       });
 
@@ -235,7 +249,14 @@ export default function PrescriberOnboarding() {
         throw error;
       }
 
-      // If we have an ID result with a storage path, also insert into verification_documents
+      let registrationLinked = false;
+
+      try {
+        registrationLinked = await finalizeProfessionalVerification();
+      } catch (verificationError) {
+        console.error('Professional verification finalization error:', verificationError);
+      }
+
       if (idResult?.storage_path) {
         const { data: prescriberData } = await supabase
           .from('prescribers')
@@ -248,14 +269,20 @@ export default function PrescriberOnboarding() {
             prescriber_id: prescriberData.id,
             document_type: 'photo_id',
             document_url: idResult.storage_path,
-            status: idVerified ? 'approved' : 'pending' as any,
+            status: idVerified ? 'approved' : 'pending',
           });
         }
       }
 
+      const description = verificationResult?.verified
+        ? registrationLinked
+          ? 'Your profile has been created and your GMC registration is now linked.'
+          : 'Your profile has been created, but your registration could not be linked automatically. It will be reviewed manually.'
+        : 'Your profile is under review. We\'ll verify your details shortly.';
+
       toast({
         title: 'Profile Created!',
-        description: 'Your profile is under review. We\'ll verify your details shortly.',
+        description,
       });
 
       navigate('/prescriber/dashboard');
