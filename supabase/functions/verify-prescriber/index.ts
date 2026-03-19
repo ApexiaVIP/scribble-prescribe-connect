@@ -34,10 +34,10 @@ Deno.serve(async (req) => {
     let registerType = '';
 
     if (prescriber_type === 'gp' || prescriber_type === 'other' || prescriber_type === 'dentist') {
-      // GMC verification - use the new register page with Firecrawl actions
-      const gmcUrl = 'https://www.gmc-uk.org/registration-and-licensing/our-registers';
+      // GMC verification - direct registrant profile URL
+      const gmcUrl = `https://www.gmc-uk.org/registrants/${registration_number}`;
       
-      console.log('Scraping GMC register for:', registration_number);
+      console.log('Scraping GMC registrant profile:', gmcUrl);
       
       const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
         method: 'POST',
@@ -48,14 +48,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           url: gmcUrl,
           formats: ['markdown'],
-          waitFor: 2000,
-          actions: [
-            { type: 'click', selector: '#cookieBannerRejectAllButton' },
-            { type: 'wait', milliseconds: 500 },
-            { type: 'write', selector: '#searchForRegistrant', text: String(registration_number) },
-            { type: 'click', selector: '#basicRegistrantSearchButton' },
-            { type: 'wait', milliseconds: 5000 },
-          ],
+          waitFor: 3000,
         }),
       });
 
@@ -66,28 +59,25 @@ Deno.serve(async (req) => {
       console.log('GMC scrape preview:', markdown.substring(0, 500));
 
       if (markdown.length > 0) {
-        // Check for registration info in the search results
-        const hasRegistration = markdown.includes('Registered with a licence to practise') || 
-                                markdown.includes('Registered without a licence to practise') ||
-                                markdown.includes('Registration status') ||
-                                markdown.includes('registered with a licence') ||
-                                markdown.includes('Status:') ||
-                                (markdown.includes(String(registration_number)) && markdown.includes('egister'));
+        const is404 = markdown.includes("can't find the page") || 
+                      markdown.includes('Page not found') ||
+                      markdown.includes('Sorry, we can');
         
-        const is404 = markdown.includes("can't find the page") || markdown.includes('404');
-        
-        if (hasRegistration && !is404) {
-          verified = markdown.includes('Registered with a licence to practise') || 
-                     markdown.includes('registered with a licence');
-          registrationStatus = verified ? 'Registered with licence' : 'Found on register';
+        if (!is404) {
+          const hasLicence = markdown.includes('Registered with a licence to practise');
+          const hasRegistrationWithout = markdown.includes('Registered without a licence to practise');
           
-          // Try to extract the doctor's name
-          const nameMatch = markdown.match(/(?:Dr |Doctor )([A-Z][a-zA-Z'-]+(?: [A-Z][a-zA-Z'-]+)+)/);
-          if (nameMatch) {
-            registrantName = nameMatch[1];
+          if (hasLicence || hasRegistrationWithout) {
+            verified = hasLicence;
+            registrationStatus = hasLicence ? 'Registered with licence' : 'Registered without licence';
+            registerType = 'GMC';
+            
+            // Extract the doctor's name - it appears as a heading like "# Adam David JONES"
+            const nameMatch = markdown.match(/^#\s+([A-Za-z][A-Za-z'-]+(?: [A-Za-z][A-Za-z'-]+)+)\s*$/m);
+            if (nameMatch) {
+              registrantName = nameMatch[1];
+            }
           }
-          
-          registerType = 'GMC';
         }
       }
     } else if (prescriber_type === 'pharmacist') {
