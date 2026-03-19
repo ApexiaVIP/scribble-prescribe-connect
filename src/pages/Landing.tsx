@@ -81,7 +81,7 @@ export default function Landing() {
       {/* Hero Section */}
       <section className="relative gradient-hero overflow-hidden">
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-[0.02]" />
-        <div className="container mx-auto px-4 py-20 md:py-32">
+        <div className="container mx-auto px-4 py-20 md:py-32 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
             <Badge variant="secondary" className="mb-6 px-4 py-1.5 text-sm">
               🇬🇧 UK's Leading Prescriber Marketplace
