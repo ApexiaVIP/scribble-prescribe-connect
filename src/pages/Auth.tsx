@@ -95,12 +95,13 @@ export default function Auth() {
         const { error } = await signUp(email, password, role, fullName);
         
         if (error) {
-          if (error.message.includes('already registered')) {
+          if (error.message.includes('already registered') || error.message.includes('already_exists')) {
             toast({
               title: 'Account exists',
               description: 'This email is already registered. Please sign in instead.',
               variant: 'destructive'
             });
+            setMode('signin');
           } else {
             toast({
               title: 'Sign up failed',
@@ -115,6 +116,13 @@ export default function Auth() {
           title: 'Welcome to Scribify!',
           description: 'Your account has been created successfully.'
         });
+
+        // Navigate directly after signup instead of waiting for role fetch
+        if (role === 'prescriber') {
+          navigate('/prescriber/onboarding');
+        } else {
+          navigate('/business/dashboard');
+        }
       } else {
         const { error } = await signIn(email, password);
         
