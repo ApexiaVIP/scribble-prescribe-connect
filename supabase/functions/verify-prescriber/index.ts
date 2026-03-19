@@ -34,10 +34,10 @@ Deno.serve(async (req) => {
     let registerType = '';
 
     if (prescriber_type === 'gp' || prescriber_type === 'other' || prescriber_type === 'dentist') {
-      // GMC verification - use the new register page with Firecrawl actions
-      const gmcUrl = 'https://www.gmc-uk.org/registration-and-licensing/our-registers';
+      // GMC verification - use direct doctor profile URL
+      const gmcUrl = `https://www.gmc-uk.org/registration-and-licensing/check-the-register/doctor/${registration_number}`;
       
-      console.log('Scraping GMC register for:', registration_number);
+      console.log('Scraping GMC doctor profile for:', registration_number);
       
       const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
         method: 'POST',
@@ -48,14 +48,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           url: gmcUrl,
           formats: ['markdown'],
-          waitFor: 2000,
-          actions: [
-            { type: 'click', selector: '#cookieBannerRejectAllButton' },
-            { type: 'wait', milliseconds: 500 },
-            { type: 'write', selector: '#searchForRegistrant', text: String(registration_number) },
-            { type: 'click', selector: '#basicRegistrantSearchButton' },
-            { type: 'wait', milliseconds: 5000 },
-          ],
+          waitFor: 3000,
         }),
       });
 
@@ -63,18 +56,20 @@ Deno.serve(async (req) => {
       const markdown = data?.data?.markdown || data?.markdown || '';
 
       console.log('GMC scrape result length:', markdown.length);
-      console.log('GMC scrape preview:', markdown.substring(0, 500));
+      console.log('GMC scrape preview:', markdown.substring(0, 1000));
 
       if (markdown.length > 0) {
-        // Check for registration info in the search results
+        const is404 = markdown.includes("can't find the page") || 
+                      markdown.includes('404') || 
+                      markdown.includes('Page not found') ||
+                      markdown.includes('no longer registered');
+        
         const hasRegistration = markdown.includes('Registered with a licence to practise') || 
                                 markdown.includes('Registered without a licence to practise') ||
                                 markdown.includes('Registration status') ||
                                 markdown.includes('registered with a licence') ||
-                                markdown.includes('Status:') ||
-                                (markdown.includes(String(registration_number)) && markdown.includes('egister'));
-        
-        const is404 = markdown.includes("can't find the page") || markdown.includes('404');
+                                markdown.includes('Status') ||
+                                markdown.includes(String(registration_number));
         
         if (hasRegistration && !is404) {
           verified = markdown.includes('Registered with a licence to practise') || 
