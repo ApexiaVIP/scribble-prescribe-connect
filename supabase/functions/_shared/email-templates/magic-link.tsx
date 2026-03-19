@@ -24,13 +24,16 @@ export const MagicLinkEmail = ({
 }: MagicLinkEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Your login link for {siteName}</Preview>
+    <Preview>Your login link for Scribify</Preview>
     <Body style={main}>
       <Container style={container}>
+        <table cellPadding="0" cellSpacing="0" style={{ marginBottom: '32px' }}><tbody><tr>
+          <td style={logoBox}><span style={logoLetter}>S</span></td>
+          <td style={{ paddingLeft: '10px' }}><span style={logoText}>Scribify</span></td>
+        </tr></tbody></table>
         <Heading style={h1}>Your login link</Heading>
         <Text style={text}>
-          Click the button below to log in to {siteName}. This link will expire
-          shortly.
+          Click the button below to log in to Scribify. This link will expire shortly.
         </Text>
         <Button style={button} href={confirmationUrl}>
           Log In
@@ -45,26 +48,20 @@ export const MagicLinkEmail = ({
 
 export default MagicLinkEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
+const main = { backgroundColor: '#ffffff', fontFamily: "'Plus Jakarta Sans', 'Inter', Arial, sans-serif" }
+const container = { padding: '40px 25px' }
+const logoBox = {
+  width: '36px', height: '36px', borderRadius: '10px',
+  backgroundColor: '#1a9e8f', textAlign: 'center' as const,
+  verticalAlign: 'middle' as const,
 }
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
+const logoLetter = { color: '#ffffff', fontWeight: 'bold' as const, fontSize: '18px' }
+const logoText = { fontWeight: 'bold' as const, fontSize: '20px', color: '#141b2d' }
+const h1 = { fontSize: '24px', fontWeight: 'bold' as const, color: '#141b2d', margin: '0 0 20px' }
+const text = { fontSize: '15px', color: '#6b7280', lineHeight: '1.6', margin: '0 0 25px' }
 const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
-  textDecoration: 'none',
+  backgroundColor: '#1a9e8f', color: '#ffffff',
+  fontSize: '15px', borderRadius: '12px',
+  padding: '14px 24px', textDecoration: 'none', fontWeight: '600' as const,
 }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
