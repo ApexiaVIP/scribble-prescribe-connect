@@ -208,10 +208,7 @@ export default function PrescriberOnboarding() {
     setLoading(true);
 
     try {
-      const registrationVerified = verificationResult?.verified;
-      const idVerified = idResult?.is_valid_id && idResult?.name_matches;
-      const verificationStatus = registrationVerified && idVerified ? 'approved' : 'pending';
-
+      // verification_status is always 'pending' on insert - approval happens server-side only
       const { error } = await supabase.from('prescribers').insert({
         user_id: user.id,
         prescriber_type: prescriberType,
@@ -225,7 +222,7 @@ export default function PrescriberOnboarding() {
         sectors: sectors.length > 0 ? sectors : null,
         regions_covered: regionsCovered ? regionsCovered.split(',').map(r => r.trim()).filter(Boolean) : null,
         availability_types: availabilityTypes.length > 0 ? availabilityTypes : null,
-        verification_status: verificationStatus as any,
+        verification_status: 'pending' as any,
         is_active: true,
       });
 
@@ -257,10 +254,8 @@ export default function PrescriberOnboarding() {
       }
 
       toast({
-        title: verificationStatus === 'approved' ? 'Profile Created & Verified!' : 'Profile Created!',
-        description: verificationStatus === 'approved'
-          ? 'Your profile is live and visible to businesses.'
-          : 'Your profile is under review. We\'ll verify your details shortly.',
+        title: 'Profile Created!',
+        description: 'Your profile is under review. We\'ll verify your details shortly.',
       });
 
       navigate('/prescriber/dashboard');
