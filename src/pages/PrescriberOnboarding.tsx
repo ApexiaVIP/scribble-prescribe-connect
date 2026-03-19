@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,11 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ShieldCheck, AlertCircle, CheckCircle2, Upload } from 'lucide-react';
+import { Loader2, ShieldCheck, AlertCircle, CheckCircle2, Upload, Camera, FileCheck, X } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
 type PrescriberType = Database['public']['Enums']['prescriber_type'];
 type AvailabilityType = Database['public']['Enums']['availability_type'];
+
+const TOTAL_STEPS = 3;
 
 const prescriberTypeLabels: Record<PrescriberType, string> = {
   gp: 'General Practitioner (GMC)',
@@ -32,6 +34,28 @@ const registerInfo: Record<PrescriberType, { register: string; url: string; numb
   dentist: { register: 'GDC', url: 'https://www.gdc-uk.org/registration/the-register', numberLabel: 'GDC Registration Number' },
   other: { register: 'GMC', url: 'https://www.gmc-uk.org/registration-and-licensing/our-registers', numberLabel: 'GMC Reference Number' },
 };
+
+const documentTypeLabels: Record<string, string> = {
+  uk_passport: 'UK Passport',
+  uk_driving_licence: 'UK Driving Licence',
+  biometric_residence_permit: 'Biometric Residence Permit',
+  eu_id_card: 'EU/EEA ID Card',
+  armed_forces_id: 'Armed Forces ID',
+  unknown: 'Unknown Document',
+};
+
+interface IdVerificationResult {
+  is_valid_id: boolean;
+  document_type: string;
+  name_on_document: string;
+  name_matches: boolean;
+  is_legible: boolean;
+  confidence: string;
+  issues: string[];
+  summary: string;
+  stored: boolean;
+  storage_path: string | null;
+}
 
 export default function PrescriberOnboarding() {
   const { user } = useAuth();
@@ -52,7 +76,14 @@ export default function PrescriberOnboarding() {
   const [prescriberType, setPrescriberType] = useState<PrescriberType>('gp');
   const [registrationNumber, setRegistrationNumber] = useState('');
 
-  // Step 2: Profile Details
+  // Step 2: ID Verification
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [idFile, setIdFile] = useState<File | null>(null);
+  const [idPreview, setIdPreview] = useState<string | null>(null);
+  const [idVerifying, setIdVerifying] = useState(false);
+  const [idResult, setIdResult] = useState<IdVerificationResult | null>(null);
+
+  // Step 3: Profile Details
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
   const [yearsExperience, setYearsExperience] = useState('');
@@ -106,13 +137,80 @@ export default function PrescriberOnboarding() {
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid file', description: 'Please upload an image file (JPEG, PNG, etc.)', variant: 'destructive' });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Please upload an image under 10MB', variant: 'destructive' });
+      return;
+    }
+
+    setIdFile(file);
+    setIdResult(null);
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setIdPreview(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearIdFile = () => {
+    setIdFile(null);
+    setIdPreview(null);
+    setIdResult(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleVerifyId = async () => {
+    if (!idPreview || !user) return;
+
+    setIdVerifying(true);
+    setIdResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-id-document', {
+        body: {
+          image_base64: idPreview,
+          file_name: idFile?.name || 'id-document',
+          prescriber_name: user.user_metadata?.full_name || '',
+        },
+      });
+
+      if (error) throw error;
+
+      setIdResult(data as IdVerificationResult);
+
+      if (data.is_valid_id && data.name_matches) {
+        toast({ title: 'ID Verified!', description: 'Your photo ID has been verified successfully.' });
+      } else if (data.is_valid_id && !data.name_matches) {
+        toast({ title: 'ID Detected', description: 'Valid ID found, but the name may not match. Please check.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Verification Issue', description: data.summary || 'Could not verify the document.', variant: 'destructive' });
+      }
+    } catch (err) {
+      console.error('ID verification error:', err);
+      toast({ title: 'Error', description: 'ID verification service unavailable. You can continue and your ID will be reviewed manually.', variant: 'destructive' });
+    } finally {
+      setIdVerifying(false);
+    }
+  };
+
   const handleSubmitProfile = async () => {
     if (!user) return;
 
     setLoading(true);
 
     try {
-      const verificationStatus = verificationResult?.verified ? 'approved' : 'pending';
+      const registrationVerified = verificationResult?.verified;
+      const idVerified = idResult?.is_valid_id && idResult?.name_matches;
+      const verificationStatus = registrationVerified && idVerified ? 'approved' : 'pending';
 
       const { error } = await supabase.from('prescribers').insert({
         user_id: user.id,
@@ -140,11 +238,29 @@ export default function PrescriberOnboarding() {
         throw error;
       }
 
+      // If we have an ID result with a storage path, also insert into verification_documents
+      if (idResult?.storage_path) {
+        const { data: prescriberData } = await supabase
+          .from('prescribers')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (prescriberData) {
+          await supabase.from('verification_documents').insert({
+            prescriber_id: prescriberData.id,
+            document_type: 'photo_id',
+            document_url: idResult.storage_path,
+            status: idVerified ? 'approved' : 'pending' as any,
+          });
+        }
+      }
+
       toast({
-        title: verificationResult?.verified ? 'Profile Created & Verified!' : 'Profile Created!',
-        description: verificationResult?.verified
+        title: verificationStatus === 'approved' ? 'Profile Created & Verified!' : 'Profile Created!',
+        description: verificationStatus === 'approved'
           ? 'Your profile is live and visible to businesses.'
-          : 'Your profile is under review. We\'ll verify your registration shortly.',
+          : 'Your profile is under review. We\'ll verify your details shortly.',
       });
 
       navigate('/prescriber/dashboard');
@@ -164,23 +280,26 @@ export default function PrescriberOnboarding() {
     setAvailabilityTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
   };
 
+  const idVerified = idResult?.is_valid_id && idResult?.name_matches;
+
   return (
     <div className="min-h-screen gradient-hero py-12 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Progress */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          {[1, 2].map((s) => (
+          {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((s) => (
             <div key={s} className="flex items-center gap-2">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
                 step >= s ? 'gradient-primary text-white' : 'bg-muted text-muted-foreground'
               }`}>
                 {step > s ? <CheckCircle2 className="h-5 w-5" /> : s}
               </div>
-              {s < 2 && <div className={`w-16 h-1 rounded ${step > s ? 'bg-primary' : 'bg-muted'}`} />}
+              {s < TOTAL_STEPS && <div className={`w-16 h-1 rounded ${step > s ? 'bg-primary' : 'bg-muted'}`} />}
             </div>
           ))}
         </div>
 
+        {/* Step 1: Registration Verification */}
         {step === 1 && (
           <Card className="shadow-xl border-0">
             <CardHeader>
@@ -251,11 +370,7 @@ export default function PrescriberOnboarding() {
               )}
 
               <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/')}
-                  className="flex-1"
-                >
+                <Button variant="outline" onClick={() => navigate('/')} className="flex-1">
                   Cancel
                 </Button>
                 <Button
@@ -276,7 +391,169 @@ export default function PrescriberOnboarding() {
           </Card>
         )}
 
+        {/* Step 2: ID Verification */}
         {step === 2 && (
+          <Card className="shadow-xl border-0">
+            <CardHeader>
+              <CardTitle className="text-2xl flex items-center gap-2">
+                <FileCheck className="h-6 w-6 text-primary" />
+                Verify Your Identity
+              </CardTitle>
+              <CardDescription>
+                Upload a photo of your UK-issued photo ID. We use AI to verify it instantly. Accepted: UK Passport, Driving Licence, Biometric Residence Permit, or EU/EEA ID Card.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Upload area */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+
+              {!idPreview ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all"
+                >
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Camera className="h-8 w-8 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Take a photo or upload your ID</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        JPEG, PNG up to 10MB
+                      </p>
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <Button type="button" size="sm" variant="outline" className="gap-1.5">
+                        <Camera className="h-4 w-4" /> Camera
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" className="gap-1.5">
+                        <Upload className="h-4 w-4" /> Upload
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="relative rounded-xl overflow-hidden border border-border">
+                    <img
+                      src={idPreview}
+                      alt="ID Document Preview"
+                      className="w-full max-h-72 object-contain bg-muted"
+                    />
+                    <Button
+                      size="icon"
+                      variant="destructive"
+                      className="absolute top-2 right-2 h-8 w-8"
+                      onClick={clearIdFile}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {!idResult && (
+                    <Button
+                      onClick={handleVerifyId}
+                      disabled={idVerifying}
+                      className="w-full gradient-primary border-0"
+                    >
+                      {idVerifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {idVerifying ? 'Analysing document...' : 'Verify ID Document'}
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Verification Result */}
+              {idResult && (
+                <Alert variant={idResult.is_valid_id && idResult.name_matches ? 'default' : 'destructive'}>
+                  {idResult.is_valid_id && idResult.name_matches ? (
+                    <CheckCircle2 className="h-4 w-4" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4" />
+                  )}
+                  <AlertTitle>
+                    {idResult.is_valid_id && idResult.name_matches
+                      ? 'ID Verified Successfully'
+                      : idResult.is_valid_id
+                        ? 'ID Detected — Name Mismatch'
+                        : 'ID Verification Failed'}
+                  </AlertTitle>
+                  <AlertDescription className="space-y-2">
+                    <p>{idResult.summary}</p>
+                    {idResult.document_type && idResult.document_type !== 'unknown' && (
+                      <p className="text-sm">
+                        <span className="font-medium">Document type:</span>{' '}
+                        {documentTypeLabels[idResult.document_type] || idResult.document_type}
+                      </p>
+                    )}
+                    {idResult.name_on_document && (
+                      <p className="text-sm">
+                        <span className="font-medium">Name on ID:</span> {idResult.name_on_document}
+                      </p>
+                    )}
+                    {idResult.confidence && (
+                      <p className="text-sm">
+                        <span className="font-medium">Confidence:</span>{' '}
+                        <Badge variant={idResult.confidence === 'high' ? 'default' : 'outline'} className="ml-1">
+                          {idResult.confidence}
+                        </Badge>
+                      </p>
+                    )}
+                    {idResult.issues.length > 0 && (
+                      <div className="text-sm">
+                        <span className="font-medium">Issues:</span>
+                        <ul className="list-disc list-inside mt-1">
+                          {idResult.issues.map((issue, i) => (
+                            <li key={i}>{issue}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {!idResult.is_valid_id && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-2"
+                        onClick={clearIdFile}
+                      >
+                        Try a different photo
+                      </Button>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
+                  Back
+                </Button>
+                <Button
+                  onClick={() => setStep(3)}
+                  disabled={!idPreview}
+                  className="flex-1 gradient-primary border-0"
+                >
+                  {idVerified ? 'Continue' : 'Continue Without ID Verification'}
+                </Button>
+              </div>
+
+              {!idVerified && idPreview && (
+                <p className="text-xs text-muted-foreground text-center">
+                  You can continue without AI verification. Your ID will be reviewed manually by our team.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 3: Profile Details */}
+        {step === 3 && (
           <Card className="shadow-xl border-0">
             <CardHeader>
               <CardTitle className="text-2xl">Complete Your Profile</CardTitle>
@@ -298,41 +575,22 @@ export default function PrescriberOnboarding() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Location</Label>
-                  <Input
-                    placeholder="e.g. London, Manchester"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                  />
+                  <Input placeholder="e.g. London, Manchester" value={location} onChange={(e) => setLocation(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Years Experience</Label>
-                  <Input
-                    type="number"
-                    placeholder="e.g. 5"
-                    value={yearsExperience}
-                    onChange={(e) => setYearsExperience(e.target.value)}
-                  />
+                  <Input type="number" placeholder="e.g. 5" value={yearsExperience} onChange={(e) => setYearsExperience(e.target.value)} />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Hourly Rate (£)</Label>
-                  <Input
-                    type="number"
-                    placeholder="e.g. 50"
-                    value={hourlyRate}
-                    onChange={(e) => setHourlyRate(e.target.value)}
-                  />
+                  <Input type="number" placeholder="e.g. 50" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Daily Rate (£)</Label>
-                  <Input
-                    type="number"
-                    placeholder="e.g. 350"
-                    value={dailyRate}
-                    onChange={(e) => setDailyRate(e.target.value)}
-                  />
+                  <Input type="number" placeholder="e.g. 350" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} />
                 </div>
               </div>
 
@@ -387,7 +645,7 @@ export default function PrescriberOnboarding() {
               </div>
 
               <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
+                <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
                   Back
                 </Button>
                 <Button
