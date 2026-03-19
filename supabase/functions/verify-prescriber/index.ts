@@ -34,55 +34,113 @@ Deno.serve(async (req) => {
     let registerType = '';
 
     if (prescriber_type === 'gp' || prescriber_type === 'other' || prescriber_type === 'dentist') {
-      // GMC verification - use direct doctor profile URL
-      const gmcUrl = `https://www.gmc-uk.org/registration-and-licensing/check-the-register/doctor/${registration_number}`;
+      // GMC verification - use Firecrawl search to find doctor on GMC register
+      console.log('Searching GMC register for:', registration_number);
       
-      console.log('Scraping GMC doctor profile for:', registration_number);
-      
-      const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      const response = await fetch('https://api.firecrawl.dev/v1/search', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          url: gmcUrl,
-          formats: ['markdown'],
-          waitFor: 3000,
+          query: `site:gmc-uk.org ${registration_number} registered licence practise`,
+          limit: 5,
+          scrapeOptions: {
+            formats: ['markdown'],
+          },
         }),
       });
 
       const data = await response.json();
-      const markdown = data?.data?.markdown || data?.markdown || '';
-
-      console.log('GMC scrape result length:', markdown.length);
-      console.log('GMC scrape preview:', markdown.substring(0, 1000));
-
-      if (markdown.length > 0) {
-        const is404 = markdown.includes("can't find the page") || 
-                      markdown.includes('404') || 
-                      markdown.includes('Page not found') ||
-                      markdown.includes('no longer registered');
+      console.log('GMC search response status:', response.status);
+      console.log('GMC search results count:', data?.data?.length || 0);
+      
+      const results = data?.data || [];
+      
+      for (const result of results) {
+        const content = (result.markdown || result.description || '').toLowerCase();
+        const title = (result.title || '').toLowerCase();
+        const url = result.url || '';
         
-        const hasRegistration = markdown.includes('Registered with a licence to practise') || 
-                                markdown.includes('Registered without a licence to practise') ||
-                                markdown.includes('Registration status') ||
-                                markdown.includes('registered with a licence') ||
-                                markdown.includes('Status') ||
-                                markdown.includes(String(registration_number));
+        console.log('Checking result:', url, 'title:', title?.substring(0, 100));
         
-        if (hasRegistration && !is404) {
-          verified = markdown.includes('Registered with a licence to practise') || 
-                     markdown.includes('registered with a licence');
-          registrationStatus = verified ? 'Registered with licence' : 'Found on register';
+        // Check if this result is from GMC and contains registration info
+        if (url.includes('gmc-uk.org') && 
+            (content.includes(String(registration_number)) || title.includes(String(registration_number)))) {
           
-          // Try to extract the doctor's name
-          const nameMatch = markdown.match(/(?:Dr |Doctor )([A-Z][a-zA-Z'-]+(?: [A-Z][a-zA-Z'-]+)+)/);
-          if (nameMatch) {
-            registrantName = nameMatch[1];
+          const hasLicence = content.includes('registered with a licence to practise') || 
+                             content.includes('registered with a licence');
+          const hasRegistration = content.includes('registration status') || 
+                                  content.includes('registered') ||
+                                  hasLicence;
+          
+          if (hasRegistration) {
+            verified = hasLicence;
+            registrationStatus = verified ? 'Registered with licence' : 'Found on register';
+            registerType = 'GMC';
+            
+            // Try to extract name
+            const fullContent = result.markdown || '';
+            const nameMatch = fullContent.match(/(?:Dr |Doctor )([A-Z][a-zA-Z'-]+(?: [A-Z][a-zA-Z'-]+)+)/);
+            if (nameMatch) {
+              registrantName = nameMatch[1];
+            }
+            break;
           }
+        }
+      }
+      
+      // Fallback: try scraping the register page with actions if search didn't work
+      if (!verified && !registerType) {
+        console.log('Search did not find results, trying scrape with actions...');
+        
+        const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            url: 'https://www.gmc-uk.org/registration-and-licensing/our-registers',
+            formats: ['markdown'],
+            waitFor: 2000,
+            actions: [
+              { type: 'click', selector: '#cookieBannerRejectAllButton' },
+              { type: 'wait', milliseconds: 1000 },
+              { type: 'write', selector: '#searchForRegistrant', text: String(registration_number) },
+              { type: 'wait', milliseconds: 500 },
+              { type: 'click', selector: '#basicRegistrantSearchButton' },
+              { type: 'wait', milliseconds: 8000 },
+              { type: 'screenshot' },
+            ],
+          }),
+        });
+
+        const scrapeData = await scrapeResponse.json();
+        const markdown = scrapeData?.data?.markdown || scrapeData?.markdown || '';
+        
+        console.log('GMC scrape fallback result length:', markdown.length);
+        console.log('GMC scrape fallback preview:', markdown.substring(0, 1000));
+
+        if (markdown.length > 0) {
+          const is404 = markdown.includes("can't find the page") || markdown.includes('404');
+          const hasRegistration = markdown.includes('Registered with a licence to practise') || 
+                                  markdown.includes('Registered without a licence to practise') ||
+                                  markdown.includes('Registration status') ||
+                                  (markdown.includes(String(registration_number)) && markdown.includes('egister'));
           
-          registerType = 'GMC';
+          if (hasRegistration && !is404) {
+            verified = markdown.includes('Registered with a licence to practise') || 
+                       markdown.includes('registered with a licence');
+            registrationStatus = verified ? 'Registered with licence' : 'Found on register';
+            
+            const nameMatch = markdown.match(/(?:Dr |Doctor )([A-Z][a-zA-Z'-]+(?: [A-Z][a-zA-Z'-]+)+)/);
+            if (nameMatch) {
+              registrantName = nameMatch[1];
+            }
+            registerType = 'GMC';
+          }
         }
       }
     } else if (prescriber_type === 'pharmacist') {
