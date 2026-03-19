@@ -254,10 +254,8 @@ export default function PrescriberOnboarding() {
       }
 
       toast({
-        title: verificationStatus === 'approved' ? 'Profile Created & Verified!' : 'Profile Created!',
-        description: verificationStatus === 'approved'
-          ? 'Your profile is live and visible to businesses.'
-          : 'Your profile is under review. We\'ll verify your details shortly.',
+        title: 'Profile Created!',
+        description: 'Your profile is under review. We\'ll verify your details shortly.',
       });
 
       navigate('/prescriber/dashboard');
