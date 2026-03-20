@@ -121,10 +121,14 @@ export default function PrescriberOnboarding() {
         message: data.message,
         registrant_name: data.registrant_name,
         status: data.status,
+        name_match: data.name_match,
+        name_similarity: data.name_similarity,
       });
 
-      if (data.verified) {
+      if (data.verified && data.name_match) {
         toast({ title: 'Verified!', description: `Your ${registerInfo[prescriberType].register} registration has been verified.` });
+      } else if (data.verified && !data.name_match) {
+        toast({ title: 'Name Mismatch', description: 'Registration found but the name doesn\'t match your signup name.', variant: 'destructive' });
       }
     } catch (err) {
       console.error('Verification error:', err);
