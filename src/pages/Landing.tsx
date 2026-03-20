@@ -20,6 +20,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/contexts/AuthContext';
 
 const prescriberTypeLabels: Record<string, string> = {
   gp: 'GP',
