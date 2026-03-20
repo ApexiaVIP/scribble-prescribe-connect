@@ -208,6 +208,22 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Name matching
+    const nameResult = (verified && full_name && registrantName)
+      ? checkNameMatch(full_name, registrantName)
+      : { matches: false, similarity: 'mismatch' as const };
+
+    console.log('Name match result:', { signupName: full_name, registerName: registrantName, ...nameResult });
+
+    let message = '';
+    if (verified && nameResult.matches) {
+      message = `Successfully verified on ${registerType} register`;
+    } else if (verified && !nameResult.matches) {
+      message = `Registration verified on ${registerType} register, but the name on the register (${registrantName}) does not match the name you signed up with. Please check you entered the correct registration number.`;
+    } else {
+      message = `Could not verify registration number ${registration_number} on the ${registerType || 'relevant'} register. Please check the number and try again, or upload verification documents for manual review.`;
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -215,9 +231,9 @@ Deno.serve(async (req) => {
         registrant_name: registrantName,
         registration_status: registrationStatus,
         register_type: registerType,
-        message: verified
-          ? `Successfully verified on ${registerType} register`
-          : `Could not verify registration number ${registration_number} on the ${registerType || 'relevant'} register. Please check the number and try again, or upload verification documents for manual review.`,
+        name_match: nameResult.matches,
+        name_similarity: nameResult.similarity,
+        message,
       }),
       { headers: jsonHeaders },
     );
