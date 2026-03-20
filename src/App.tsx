@@ -12,6 +12,7 @@ import PrescriberDashboard from "./pages/PrescriberDashboard";
 import PrescriberProfile from "./pages/PrescriberProfile";
 import BusinessDashboard from "./pages/BusinessDashboard";
 import Profile from "./pages/Profile";
+import HowItWorks from "./pages/HowItWorks";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
