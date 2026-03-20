@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ArrowLeft, BadgeCheck, MapPin, Clock, Stethoscope,
-  PoundSterling, Briefcase, GraduationCap
+  PoundSterling, Briefcase, GraduationCap, FileCheck
 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -35,6 +35,7 @@ export default function PrescriberProfile() {
   const navigate = useNavigate();
   const [prescriber, setPrescriber] = useState<Prescriber | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [hasVerifiedId, setHasVerifiedId] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -66,6 +67,16 @@ export default function PrescriberProfile() {
       .single();
 
     setProfile(profileData);
+
+    // Check if prescriber has a verified ID document (don't expose the document itself)
+    const { data: docsData } = await supabase
+      .from('verification_documents')
+      .select('status')
+      .eq('prescriber_id', prescriberData.id)
+      .eq('status', 'approved')
+      .limit(1);
+
+    setHasVerifiedId((docsData?.length || 0) > 0);
     setLoading(false);
   };
 
@@ -136,7 +147,12 @@ export default function PrescriberProfile() {
                   )}
                   {prescriber?.verification_status === 'approved' && (
                     <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
-                      Verified
+                      <BadgeCheck className="h-3 w-3 mr-1" /> Registration Verified
+                    </Badge>
+                  )}
+                  {hasVerifiedId && (
+                    <Badge className="bg-sky-100 text-sky-800 border-sky-200">
+                      <FileCheck className="h-3 w-3 mr-1" /> ID Verified
                     </Badge>
                   )}
                 </div>

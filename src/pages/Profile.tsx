@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
+type VerificationDocument = Database['public']['Tables']['verification_documents']['Row'];
+
 type Prescriber = Database['public']['Tables']['prescribers']['Row'];
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 type PrescriberType = Database['public']['Enums']['prescriber_type'];
@@ -43,6 +45,7 @@ export default function Profile() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [prescriber, setPrescriber] = useState<Prescriber | null>(null);
+  const [verificationDocs, setVerificationDocs] = useState<VerificationDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -71,6 +74,18 @@ export default function Profile() {
       .single();
 
     setPrescriber(prescriberData);
+
+    // Fetch verification documents if prescriber
+    if (prescriberData) {
+      const { data: docsData } = await supabase
+        .from('verification_documents')
+        .select('*')
+        .eq('prescriber_id', prescriberData.id)
+        .order('uploaded_at', { ascending: false });
+
+      setVerificationDocs(docsData || []);
+    }
+
     setLoading(false);
   };
 
@@ -194,7 +209,50 @@ export default function Profile() {
               </CardContent>
             </Card>
 
-            {/* Professional Details */}
+            {/* Identity Verification */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FileCheck className="h-5 w-5 text-primary" />
+                  Identity Verification
+                </CardTitle>
+                <CardDescription>
+                  Your uploaded photo ID — only visible to you
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {verificationDocs.length > 0 ? (
+                  <div className="space-y-3">
+                    {verificationDocs.map((doc) => (
+                      <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border">
+                        <div className="flex items-center gap-3">
+                          <FileCheck className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium text-sm capitalize">{doc.document_type.replace(/_/g, ' ')}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Uploaded {new Date(doc.uploaded_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge className={statusVariant[doc.status] || ''}>
+                          {doc.status === 'approved' && <BadgeCheck className="h-3 w-3 mr-1" />}
+                          {doc.status === 'pending' && <AlertCircle className="h-3 w-3 mr-1" />}
+                          {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <FileCheck className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No ID document uploaded yet</p>
+                    <p className="text-xs mt-1">Upload during onboarding or contact support</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
