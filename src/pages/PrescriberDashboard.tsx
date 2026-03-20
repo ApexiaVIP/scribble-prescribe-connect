@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
-  Calendar, Clock, DollarSign, ShieldCheck, AlertCircle, 
+  Calendar, Clock, PoundSterling, ShieldCheck, AlertCircle, 
   MapPin, Star, Settings, Plus, CheckCircle2 
 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
