@@ -36,7 +36,7 @@ async function scrapeWithFirecrawl(url: string, apiKey: string) {
 }
 
 async function verifyGmcRegistration(registrationNumber: string, apiKey: string) {
-  const gmcUrl = `https://www.gmc-uk.org/registration-and-licensing/the-medical-register/a-]doctor-on-the-medical-register?query=${encodeURIComponent(registrationNumber)}&searchType=gmc`;
+  const gmcUrl = `https://www.gmc-uk.org/registration-and-licensing/the-medical-register?query=${encodeURIComponent(registrationNumber)}`;
 
   console.log('Scraping GMC register via Firecrawl for:', registrationNumber);
 
