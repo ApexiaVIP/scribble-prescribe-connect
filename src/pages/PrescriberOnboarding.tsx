@@ -70,6 +70,8 @@ export default function PrescriberOnboarding() {
     message: string;
     registrant_name?: string;
     status?: string;
+    name_match?: boolean;
+    name_similarity?: string;
   } | null>(null);
 
   // Step 1: Type & Registration
