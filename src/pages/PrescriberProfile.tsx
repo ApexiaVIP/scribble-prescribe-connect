@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ArrowLeft, BadgeCheck, MapPin, Clock, Stethoscope,
-  PoundSterling, Briefcase, GraduationCap
+  PoundSterling, Briefcase, GraduationCap, FileCheck
 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
