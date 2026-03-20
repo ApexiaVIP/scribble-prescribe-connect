@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { registration_number, prescriber_type } = await req.json();
+    const { registration_number, prescriber_type, full_name } = await req.json();
 
     if (!registration_number || !prescriber_type) {
       return new Response(
