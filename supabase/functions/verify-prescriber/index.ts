@@ -10,100 +10,7 @@ const jsonHeaders = {
   'Content-Type': 'application/json',
 };
 
-const GMC_STATUS_WITH_LICENCE = 'Registered with a licence to practise';
-const GMC_STATUS_WITHOUT_LICENCE = 'Registered without a licence to practise';
-const GMC_STATUS_PROVISIONAL = 'Provisionally registered with a licence to practise';
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function htmlToText(value: string) {
-  return value
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function extractGmcRegistrantName(html: string) {
-  const nameMatch = html.match(/<h1>(.*?)<\/h1>/i);
-  return nameMatch ? htmlToText(nameMatch[1]) : '';
-}
-
-function extractGmcCurrentStatus(html: string, registrationNumber: string) {
-  const presentStatusMatch = html.match(
-    /<tr>\s*<td>[^<]*<\/td>\s*<td>\s*Present\s*<\/td>\s*<td>(.*?)<\/td>\s*<\/tr>/is,
-  );
-
-  if (presentStatusMatch) {
-    return htmlToText(presentStatusMatch[1]);
-  }
-
-  const text = htmlToText(html);
-  const escapedRegistrationNumber = escapeRegExp(registrationNumber);
-  const summaryStatusMatch = text.match(
-    new RegExp(
-      `GMC reference number:\\s*${escapedRegistrationNumber}\\s*(${GMC_STATUS_WITH_LICENCE}|${GMC_STATUS_WITHOUT_LICENCE}|${GMC_STATUS_PROVISIONAL})`,
-      'i',
-    ),
-  );
-
-  return summaryStatusMatch?.[1] ?? '';
-}
-
-async function verifyGmcRegistration(registrationNumber: string) {
-  const gmcUrl = `https://www.gmc-uk.org/api/gmc/print/registrant?no=${encodeURIComponent(registrationNumber)}`;
-
-  console.log('Fetching GMC print profile:', gmcUrl);
-
-  const response = await fetch(gmcUrl, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0',
-      Accept: 'text/html,application/xhtml+xml',
-    },
-  });
-
-  if (!response.ok) {
-    console.error('GMC profile request failed:', response.status);
-    return {
-      verified: false,
-      registrantName: '',
-      registrationStatus: '',
-      registerType: 'GMC',
-    };
-  }
-
-  const html = await response.text();
-  console.log('GMC HTML length:', html.length);
-
-  const text = htmlToText(html);
-  const escapedRegistrationNumber = escapeRegExp(registrationNumber);
-  const hasReference = new RegExp(`GMC reference number:\\s*${escapedRegistrationNumber}\\b`, 'i').test(text);
-
-  if (!hasReference) {
-    return {
-      verified: false,
-      registrantName: '',
-      registrationStatus: '',
-      registerType: 'GMC',
-    };
-  }
-
-  const registrationStatus = extractGmcCurrentStatus(html, registrationNumber);
-  const registrantName = extractGmcRegistrantName(html);
-  const verified = registrationStatus.toLowerCase() === GMC_STATUS_WITH_LICENCE.toLowerCase();
-
-  return {
-    verified,
-    registrantName,
-    registrationStatus,
-    registerType: 'GMC',
-  };
-}
+const GMC_STATUS_WITH_LICENCE = 'registered with a licence to practise';
 
 async function scrapeWithFirecrawl(url: string, apiKey: string) {
   const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
@@ -128,6 +35,60 @@ async function scrapeWithFirecrawl(url: string, apiKey: string) {
   return data?.data?.markdown || data?.markdown || '';
 }
 
+async function verifyGmcRegistration(registrationNumber: string, apiKey: string) {
+  const gmcUrl = `https://www.gmc-uk.org/registration-and-licensing/the-medical-register/a-]doctor-on-the-medical-register?query=${encodeURIComponent(registrationNumber)}&searchType=gmc`;
+
+  console.log('Scraping GMC register via Firecrawl for:', registrationNumber);
+
+  try {
+    const markdown = await scrapeWithFirecrawl(gmcUrl, apiKey);
+    console.log('GMC scrape result length:', markdown.length);
+    console.log('GMC scrape preview:', markdown.substring(0, 500));
+
+    if (!markdown || markdown.length === 0) {
+      return { verified: false, registrantName: '', registrationStatus: '', registerType: 'GMC' };
+    }
+
+    // Check if the registration number appears in the results
+    if (!markdown.includes(registrationNumber)) {
+      console.log('Registration number not found in scrape results');
+      return { verified: false, registrantName: '', registrationStatus: '', registerType: 'GMC' };
+    }
+
+    // Check for the licence status
+    const lowerMarkdown = markdown.toLowerCase();
+    const hasLicence = lowerMarkdown.includes(GMC_STATUS_WITH_LICENCE);
+
+    // Try to extract name - look for patterns like "Dr FIRSTNAME LASTNAME" or heading with name
+    let registrantName = '';
+    const namePatterns = [
+      /#+\s*(?:Dr\.?\s+)?([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)+)/m,
+      /\*\*(?:Dr\.?\s+)?([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)+)\*\*/,
+      /Name[:\s]*([^\n|]+)/i,
+    ];
+
+    for (const pattern of namePatterns) {
+      const match = markdown.match(pattern);
+      if (match) {
+        registrantName = match[1].trim();
+        break;
+      }
+    }
+
+    const registrationStatus = hasLicence ? 'Registered with a licence to practise' : 'Not verified';
+
+    return {
+      verified: hasLicence,
+      registrantName,
+      registrationStatus,
+      registerType: 'GMC',
+    };
+  } catch (error) {
+    console.error('GMC Firecrawl scrape error:', error);
+    return { verified: false, registrantName: '', registrationStatus: '', registerType: 'GMC' };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -143,26 +104,26 @@ Deno.serve(async (req) => {
       );
     }
 
+    const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Verification service not configured' }),
+        { status: 500, headers: jsonHeaders },
+      );
+    }
+
     let verified = false;
     let registrantName = '';
     let registrationStatus = '';
     let registerType = '';
 
     if (prescriber_type === 'gp' || prescriber_type === 'other' || prescriber_type === 'dentist') {
-      const gmcResult = await verifyGmcRegistration(registration_number);
+      const gmcResult = await verifyGmcRegistration(registration_number, apiKey);
       verified = gmcResult.verified;
       registrantName = gmcResult.registrantName;
       registrationStatus = gmcResult.registrationStatus;
       registerType = gmcResult.registerType;
     } else if (prescriber_type === 'pharmacist') {
-      const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
-      if (!apiKey) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Verification service not configured' }),
-          { status: 500, headers: jsonHeaders },
-        );
-      }
-
       const gphcUrl = `https://www.pharmacyregulation.org/registers/pharmacist/registrationnumber/${registration_number}`;
 
       console.log('Scraping GPhC register for:', registration_number);
