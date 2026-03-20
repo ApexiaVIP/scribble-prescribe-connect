@@ -49,6 +49,8 @@ const availabilityTypeLabels = {
 };
 
 export default function Browse() {
+  const { userRole } = useAuth();
+  const isBusiness = userRole === 'business';
   const [prescribers, setPrescribers] = useState<PrescriberWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
