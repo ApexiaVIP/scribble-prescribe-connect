@@ -31,6 +31,9 @@ const prescriberTypeLabels: Record<string, string> = {
 };
 
 export default function Landing() {
+  const { userRole } = useAuth();
+  const isBusiness = userRole === 'business';
+
   // Fetch available prescribers with profiles
   const { data: prescribers, isLoading } = useQuery({
     queryKey: ['available-prescribers'],
