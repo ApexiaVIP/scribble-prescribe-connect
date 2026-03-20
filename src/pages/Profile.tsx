@@ -45,6 +45,7 @@ export default function Profile() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [prescriber, setPrescriber] = useState<Prescriber | null>(null);
+  const [verificationDocs, setVerificationDocs] = useState<VerificationDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
