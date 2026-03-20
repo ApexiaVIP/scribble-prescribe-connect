@@ -67,6 +67,16 @@ export default function PrescriberProfile() {
       .single();
 
     setProfile(profileData);
+
+    // Check if prescriber has a verified ID document (don't expose the document itself)
+    const { data: docsData } = await supabase
+      .from('verification_documents')
+      .select('status')
+      .eq('prescriber_id', prescriberData.id)
+      .eq('status', 'approved')
+      .limit(1);
+
+    setHasVerifiedId((docsData?.length || 0) > 0);
     setLoading(false);
   };
 
