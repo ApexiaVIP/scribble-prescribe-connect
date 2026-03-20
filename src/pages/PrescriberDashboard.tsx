@@ -158,7 +158,7 @@ export default function PrescriberDashboard() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <DollarSign className="h-4 w-4" />
+                <PoundSterling className="h-4 w-4" />
                 <span className="text-sm">Hourly Rate</span>
               </div>
               <p className="text-2xl font-bold">{prescriber?.hourly_rate ? `£${prescriber.hourly_rate}` : '—'}</p>
