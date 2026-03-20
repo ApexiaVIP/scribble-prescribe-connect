@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
-  Calendar, Clock, DollarSign, ShieldCheck, AlertCircle, 
+  Calendar, Clock, PoundSterling, ShieldCheck, AlertCircle, 
   MapPin, Star, Settings, Plus, CheckCircle2 
 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
@@ -158,7 +158,7 @@ export default function PrescriberDashboard() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <DollarSign className="h-4 w-4" />
+                <PoundSterling className="h-4 w-4" />
                 <span className="text-sm">Hourly Rate</span>
               </div>
               <p className="text-2xl font-bold">{prescriber?.hourly_rate ? `£${prescriber.hourly_rate}` : '—'}</p>
