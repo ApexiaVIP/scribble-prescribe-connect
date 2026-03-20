@@ -32,8 +32,45 @@ async function scrapeWithFirecrawl(url: string, apiKey: string, waitFor = 3000) 
   return data?.data?.markdown || data?.markdown || '';
 }
 
+function normaliseNameParts(name: string): string[] {
+  return name
+    .toLowerCase()
+    .replace(/\b(dr|mr|mrs|ms|miss|prof|professor|sir|dame)\b/gi, '')
+    .replace(/[^a-z\s]/g, '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function checkNameMatch(signupName: string, registerName: string): { matches: boolean; similarity: 'exact' | 'partial' | 'mismatch' } {
+  if (!signupName || !registerName) return { matches: false, similarity: 'mismatch' };
+
+  const signupParts = normaliseNameParts(signupName);
+  const registerParts = normaliseNameParts(registerName);
+
+  if (signupParts.length === 0 || registerParts.length === 0) return { matches: false, similarity: 'mismatch' };
+
+  // Check if all signup name parts appear in register name (allows for middle names etc.)
+  const allSignupInRegister = signupParts.every(part => registerParts.includes(part));
+  const allRegisterInSignup = registerParts.every(part => signupParts.includes(part));
+
+  if (allSignupInRegister && allRegisterInSignup) return { matches: true, similarity: 'exact' };
+
+  // Partial: at least surname (last part) matches
+  const signupSurname = signupParts[signupParts.length - 1];
+  const registerSurname = registerParts[registerParts.length - 1];
+  if (signupSurname === registerSurname) {
+    // Check if at least one first name part also matches
+    const sharedFirstNames = signupParts.slice(0, -1).filter(p => registerParts.includes(p));
+    if (sharedFirstNames.length > 0 || signupParts.length === 1) {
+      return { matches: true, similarity: 'partial' };
+    }
+  }
+
+  return { matches: false, similarity: 'mismatch' };
+}
+
 async function verifyGmcRegistration(registrationNumber: string, apiKey: string) {
-  // Direct registrant profile page
   const gmcUrl = `https://www.gmc-uk.org/registrants/${registrationNumber}`;
 
   console.log('Scraping GMC registrant page via Firecrawl:', gmcUrl);
@@ -47,31 +84,24 @@ async function verifyGmcRegistration(registrationNumber: string, apiKey: string)
       return { verified: false, registrantName: '', registrationStatus: '', registerType: 'GMC' };
     }
 
-    // Check for 404 or not found
     if (markdown.includes("can't find the page") || markdown.includes('404')) {
       console.log('GMC registrant page not found');
       return { verified: false, registrantName: '', registrationStatus: '', registerType: 'GMC' };
     }
 
-    // Check for the licence status
     const lowerMarkdown = markdown.toLowerCase();
     const hasLicence = lowerMarkdown.includes(GMC_STATUS_WITH_LICENCE);
 
-    // Extract name from heading (usually # Dr FIRSTNAME LASTNAME or # FIRSTNAME LASTNAME)
     let registrantName = '';
-    // Look for the registrant name in markdown headings
     const nameMatch = markdown.match(/^#\s+(.+?)$/m);
     if (nameMatch) {
       const name = nameMatch[1].trim();
-      // Filter out generic page titles
       if (!name.includes('registers') && !name.includes('Cookies') && !name.includes('Sorry')) {
         registrantName = name;
       }
     }
 
-    // Also try to find GMC reference number to confirm we have the right person
     const hasReference = markdown.includes(registrationNumber);
-
     const registrationStatus = hasLicence ? 'Registered with a licence to practise' : (hasReference ? 'Found but licence status unclear' : 'Not found');
     const verified = hasLicence;
 
@@ -95,7 +125,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { registration_number, prescriber_type } = await req.json();
+    const { registration_number, prescriber_type, full_name } = await req.json();
 
     if (!registration_number || !prescriber_type) {
       return new Response(
@@ -178,6 +208,22 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Name matching
+    const nameResult = (verified && full_name && registrantName)
+      ? checkNameMatch(full_name, registrantName)
+      : { matches: false, similarity: 'mismatch' as const };
+
+    console.log('Name match result:', { signupName: full_name, registerName: registrantName, ...nameResult });
+
+    let message = '';
+    if (verified && nameResult.matches) {
+      message = `Successfully verified on ${registerType} register`;
+    } else if (verified && !nameResult.matches) {
+      message = `Registration verified on ${registerType} register, but the name on the register (${registrantName}) does not match the name you signed up with. Please check you entered the correct registration number.`;
+    } else {
+      message = `Could not verify registration number ${registration_number} on the ${registerType || 'relevant'} register. Please check the number and try again, or upload verification documents for manual review.`;
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -185,9 +231,9 @@ Deno.serve(async (req) => {
         registrant_name: registrantName,
         registration_status: registrationStatus,
         register_type: registerType,
-        message: verified
-          ? `Successfully verified on ${registerType} register`
-          : `Could not verify registration number ${registration_number} on the ${registerType || 'relevant'} register. Please check the number and try again, or upload verification documents for manual review.`,
+        name_match: nameResult.matches,
+        name_similarity: nameResult.similarity,
+        message,
       }),
       { headers: jsonHeaders },
     );
