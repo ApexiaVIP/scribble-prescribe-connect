@@ -312,7 +312,7 @@ export default function Landing() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <h4 className="font-bold truncate">
-                            {prescriber.profile?.full_name || 'Verified Prescriber'}
+                            {isBusiness ? (prescriber.profile?.full_name || 'Verified Prescriber') : prescriberTypeLabels[prescriber.prescriber_type]}
                           </h4>
                           {prescriber.verification_status === 'approved' && (
                             <BadgeCheck className="h-4 w-4 text-primary shrink-0" />
