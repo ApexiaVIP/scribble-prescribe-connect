@@ -35,6 +35,7 @@ export default function PrescriberProfile() {
   const navigate = useNavigate();
   const [prescriber, setPrescriber] = useState<Prescriber | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [hasVerifiedId, setHasVerifiedId] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
