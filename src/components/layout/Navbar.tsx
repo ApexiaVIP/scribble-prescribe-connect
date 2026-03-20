@@ -118,7 +118,7 @@ export function Navbar() {
               Find Prescribers
             </Link>
             <Link 
-              to="/browse" 
+              to="/how-it-works" 
               className="block text-muted-foreground hover:text-foreground"
               onClick={() => setMobileMenuOpen(false)}
             >
