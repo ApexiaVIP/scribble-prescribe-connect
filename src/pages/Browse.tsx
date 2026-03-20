@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -48,6 +49,8 @@ const availabilityTypeLabels = {
 };
 
 export default function Browse() {
+  const { userRole } = useAuth();
+  const isBusiness = userRole === 'business';
   const [prescribers, setPrescribers] = useState<PrescriberWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -263,7 +266,7 @@ export default function Browse() {
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredPrescribers.map((prescriber) => (
-                <Link key={prescriber.id} to={`/prescriber/${prescriber.id}`}>
+                <Link key={prescriber.id} to={isBusiness ? `/prescriber/${prescriber.id}` : '/auth?mode=signup'}>
                   <Card className="h-full hover-lift cursor-pointer">
                     <CardContent className="p-6">
                       <div className="flex items-start gap-4">
@@ -273,19 +276,23 @@ export default function Browse() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <h3 className="font-semibold truncate">
-                              {prescriber.profiles?.full_name || 'Unknown'}
+                              {isBusiness
+                                ? (prescriber.profiles?.full_name || 'Verified Prescriber')
+                                : prescriberTypeLabels[prescriber.prescriber_type]}
                             </h3>
                             {prescriber.verification_status === 'approved' && (
                               <BadgeCheck className="h-4 w-4 text-primary shrink-0" />
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {prescriberTypeLabels[prescriber.prescriber_type]}
+                            {isBusiness
+                              ? prescriberTypeLabels[prescriber.prescriber_type]
+                              : 'Verified Prescriber'}
                           </p>
                         </div>
                       </div>
 
-                      {prescriber.bio && (
+                      {isBusiness && prescriber.bio && (
                         <p className="text-sm text-muted-foreground mt-4 line-clamp-2">
                           {prescriber.bio}
                         </p>
@@ -314,9 +321,15 @@ export default function Browse() {
                               <span className="text-sm font-normal text-muted-foreground">/hr</span>
                             </span>
                           )}
+                          {prescriber.daily_rate && (
+                            <span className={`text-lg font-bold ${prescriber.hourly_rate ? ' ml-3' : ''}`}>
+                              £{Number(prescriber.daily_rate).toFixed(0)}
+                              <span className="text-sm font-normal text-muted-foreground">/day</span>
+                            </span>
+                          )}
                         </div>
                         <Button size="sm" variant="ghost" className="text-primary">
-                          View Profile
+                          {isBusiness ? 'View Profile' : 'Register to View'}
                         </Button>
                       </div>
                     </CardContent>

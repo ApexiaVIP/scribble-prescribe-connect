@@ -20,6 +20,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/contexts/AuthContext';
 
 const prescriberTypeLabels: Record<string, string> = {
   gp: 'GP',
@@ -30,6 +31,9 @@ const prescriberTypeLabels: Record<string, string> = {
 };
 
 export default function Landing() {
+  const { userRole } = useAuth();
+  const isBusiness = userRole === 'business';
+
   // Fetch available prescribers with profiles
   const { data: prescribers, isLoading } = useQuery({
     queryKey: ['available-prescribers'],
@@ -308,7 +312,7 @@ export default function Landing() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <h4 className="font-bold truncate">
-                            {prescriber.profile?.full_name || 'Verified Prescriber'}
+                            {isBusiness ? (prescriber.profile?.full_name || 'Verified Prescriber') : prescriberTypeLabels[prescriber.prescriber_type]}
                           </h4>
                           {prescriber.verification_status === 'approved' && (
                             <BadgeCheck className="h-4 w-4 text-primary shrink-0" />
