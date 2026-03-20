@@ -74,6 +74,18 @@ export default function Profile() {
       .single();
 
     setPrescriber(prescriberData);
+
+    // Fetch verification documents if prescriber
+    if (prescriberData) {
+      const { data: docsData } = await supabase
+        .from('verification_documents')
+        .select('*')
+        .eq('prescriber_id', prescriberData.id)
+        .order('uploaded_at', { ascending: false });
+
+      setVerificationDocs(docsData || []);
+    }
+
     setLoading(false);
   };
 
