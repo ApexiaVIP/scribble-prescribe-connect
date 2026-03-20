@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
+type VerificationDocument = Database['public']['Tables']['verification_documents']['Row'];
+
 type Prescriber = Database['public']['Tables']['prescribers']['Row'];
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 type PrescriberType = Database['public']['Enums']['prescriber_type'];
