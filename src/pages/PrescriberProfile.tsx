@@ -147,7 +147,12 @@ export default function PrescriberProfile() {
                   )}
                   {prescriber?.verification_status === 'approved' && (
                     <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
-                      Verified
+                      <BadgeCheck className="h-3 w-3 mr-1" /> Registration Verified
+                    </Badge>
+                  )}
+                  {hasVerifiedId && (
+                    <Badge className="bg-sky-100 text-sky-800 border-sky-200">
+                      <FileCheck className="h-3 w-3 mr-1" /> ID Verified
                     </Badge>
                   )}
                 </div>
