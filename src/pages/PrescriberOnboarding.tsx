@@ -379,22 +379,53 @@ export default function PrescriberOnboarding() {
               </Button>
 
               {verificationResult && (
-                <Alert variant={verificationResult.verified ? 'default' : 'destructive'}>
-                  {verificationResult.verified ? (
-                    <CheckCircle2 className="h-4 w-4" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4" />
-                  )}
-                  <AlertTitle>
-                    {verificationResult.verified ? 'Registration Verified' : 'Verification Incomplete'}
-                  </AlertTitle>
-                  <AlertDescription>
-                    {verificationResult.message}
-                    {verificationResult.registrant_name && (
-                      <p className="mt-1 font-medium">Registrant: {verificationResult.registrant_name}</p>
+                <>
+                  <Alert variant={verificationResult.verified && verificationResult.name_match ? 'default' : 'destructive'}>
+                    {verificationResult.verified && verificationResult.name_match ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4" />
                     )}
-                  </AlertDescription>
-                </Alert>
+                    <AlertTitle>
+                      {verificationResult.verified && verificationResult.name_match
+                        ? 'Registration Verified'
+                        : verificationResult.verified && !verificationResult.name_match
+                        ? 'Name Mismatch'
+                        : 'Verification Incomplete'}
+                    </AlertTitle>
+                    <AlertDescription>
+                      {verificationResult.message}
+                      {verificationResult.registrant_name && (
+                        <p className="mt-1 font-medium">Registrant: {verificationResult.registrant_name}</p>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+
+                  {verificationResult.verified && !verificationResult.name_match && (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Is this your registration number?</AlertTitle>
+                      <AlertDescription className="space-y-3">
+                        <p>
+                          You signed up as <strong>{user?.user_metadata?.full_name}</strong> but the register shows <strong>{verificationResult.registrant_name}</strong>.
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          If this is wrong, clear the number below and enter the correct one. Minor differences (e.g. middle names) are fine.
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setRegistrationNumber('');
+                            setVerificationResult(null);
+                          }}
+                        >
+                          Try a different number
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </>
               )}
 
               <div className="flex gap-3">
@@ -403,10 +434,10 @@ export default function PrescriberOnboarding() {
                 </Button>
                 <Button
                   onClick={() => setStep(2)}
-                  disabled={!registrationNumber.trim()}
+                  disabled={!registrationNumber.trim() || (verificationResult?.verified === true && verificationResult?.name_match === false)}
                   className="flex-1 gradient-primary border-0"
                 >
-                  {verificationResult?.verified ? 'Continue' : 'Continue Anyway'}
+                  {verificationResult?.verified && verificationResult?.name_match ? 'Continue' : verificationResult?.verified && !verificationResult?.name_match ? 'Fix Name Mismatch First' : 'Continue Anyway'}
                 </Button>
               </div>
 
