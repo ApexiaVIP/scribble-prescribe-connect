@@ -151,8 +151,8 @@ Deno.serve(async (req) => {
             if (!cell) return '';
             const parts = cell.split('<br>');
             let v = parts[parts.length - 1] || '';
-            // strip markdown links: [text](url) -> text
-            v = v.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').trim();
+            // remove markdown links entirely, e.g. " [See registration details](url)"
+            v = v.replace(/\s*\[[^\]]*\]\([^)]*\)/g, '').trim();
             return v;
           };
 
