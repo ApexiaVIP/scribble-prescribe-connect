@@ -26,11 +26,11 @@ import { Link } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/types';
 
 type Prescriber = Database['public']['Tables']['prescribers']['Row'];
-type Profile = Database['public']['Tables']['profiles']['Row'];
+type PublicProfile = { user_id: string; full_name: string | null; avatar_url: string | null };
 type PrescriberType = Database['public']['Enums']['prescriber_type'];
 
 interface PrescriberWithProfile extends Prescriber {
-  profiles: Profile | null;
+  profiles: PublicProfile | null;
 }
 
 const prescriberTypeLabels: Record<PrescriberType, string> = {
