@@ -485,14 +485,7 @@ export type Database = {
       }
     }
     Views: {
-      public_prescriber_profiles: {
-        Row: {
-          avatar_url: string | null
-          full_name: string | null
-          user_id: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       delete_email: {
@@ -502,6 +495,14 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      get_public_prescriber_profiles: {
+        Args: { _user_ids?: string[] }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          user_id: string
+        }[]
       }
       get_user_role: {
         Args: { _user_id: string }
