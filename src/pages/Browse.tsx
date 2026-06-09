@@ -76,9 +76,7 @@ export default function Browse() {
       // Fetch profiles for each prescriber
       const userIds = prescribersData.map(p => p.user_id);
       const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('user_id', userIds);
+        .rpc('get_public_prescriber_profiles', { _user_ids: userIds });
       
       const profilesMap = new Map(profilesData?.map(p => [p.user_id, p]) || []);
       

@@ -64,9 +64,7 @@ export default function Landing() {
       // Get profiles for these prescribers
       const userIds = availablePrescribers?.map(p => p.user_id) || [];
       const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, avatar_url')
-        .in('user_id', userIds);
+        .rpc('get_public_prescriber_profiles', { _user_ids: userIds });
 
       // Merge profiles with prescribers
       return availablePrescribers?.map(p => ({
