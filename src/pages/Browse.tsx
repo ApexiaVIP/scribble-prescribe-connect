@@ -26,11 +26,11 @@ import { Link } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/types';
 
 type Prescriber = Database['public']['Tables']['prescribers']['Row'];
-type Profile = Database['public']['Tables']['profiles']['Row'];
+type PublicProfile = { user_id: string; full_name: string | null; avatar_url: string | null };
 type PrescriberType = Database['public']['Enums']['prescriber_type'];
 
 interface PrescriberWithProfile extends Prescriber {
-  profiles: Profile | null;
+  profiles: PublicProfile | null;
 }
 
 const prescriberTypeLabels: Record<PrescriberType, string> = {
@@ -76,9 +76,7 @@ export default function Browse() {
       // Fetch profiles for each prescriber
       const userIds = prescribersData.map(p => p.user_id);
       const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('user_id', userIds);
+        .rpc('get_public_prescriber_profiles', { _user_ids: userIds });
       
       const profilesMap = new Map(profilesData?.map(p => [p.user_id, p]) || []);
       
