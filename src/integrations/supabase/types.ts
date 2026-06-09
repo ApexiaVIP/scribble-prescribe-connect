@@ -485,7 +485,14 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_prescriber_profiles: {
+        Row: {
+          avatar_url: string | null
+          full_name: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       delete_email: {
@@ -515,6 +522,10 @@ export type Database = {
           source_queue: string
         }
         Returns: number
+      }
+      prescriber_has_verified_document: {
+        Args: { _prescriber_id: string }
+        Returns: boolean
       }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
