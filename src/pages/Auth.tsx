@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import Seo from '@/components/Seo';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -144,7 +145,14 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen gradient-hero flex items-center justify-center px-4 py-12">
+    <>
+      <Seo
+        title="Sign In or Create Account — Scribify"
+        description="Sign in or register on Scribify to hire verified UK prescribers or list your availability as a healthcare professional."
+        path="/auth"
+        noindex
+      />
+      <div className="min-h-screen gradient-hero flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         {/* Logo */}
         <Link to="/" className="flex items-center justify-center space-x-2 mb-8">

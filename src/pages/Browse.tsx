@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
+import Seo from '@/components/Seo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -125,6 +126,11 @@ export default function Browse() {
 
   return (
     <Layout>
+      <Seo
+        title="Browse Verified Prescribers — Scribify"
+        description="Search verified UK prescribers by location, specialty, and availability. Book GMC and GPhC checked professionals for hourly or daily shifts."
+        path="/browse"
+      />
       <div className="bg-muted/30 min-h-screen">
         {/* Header */}
         <div className="bg-background border-b">

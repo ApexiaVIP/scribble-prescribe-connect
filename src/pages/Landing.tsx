@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
+import Seo from '@/components/Seo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -76,6 +77,11 @@ export default function Landing() {
 
   return (
     <Layout>
+      <Seo
+        title="Scribify — Hire Verified UK Prescribers On-Demand"
+        description="Hire GMC and GPhC verified prescribers across the UK. Secure escrow payments, ID-checked professionals, and flexible hourly or daily booking."
+        path="/"
+      />
       {/* Hero Section */}
       <section className="relative gradient-hero overflow-hidden">
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-[0.02]" />
