@@ -325,7 +325,11 @@ export default function Landing() {
                     </div>
                     <div className="mt-4 pt-4 border-t flex items-center justify-between">
                       <div>
-                        {prescriber.daily_rate ? (
+                        {!user ? (
+                          <Link to="/auth" className="text-sm font-medium text-primary hover:underline">
+                            Sign in to view rates
+                          </Link>
+                        ) : prescriber.daily_rate ? (
                           <span className="font-bold text-lg">
                             £{prescriber.daily_rate}<span className="text-sm font-normal text-muted-foreground">/day</span>
                           </span>

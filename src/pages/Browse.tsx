@@ -321,6 +321,12 @@ export default function Browse() {
 
                       <div className="flex items-center justify-between mt-4 pt-4 border-t">
                         <div>
+                          {!user ? (
+                            <Link to="/auth" className="text-sm font-medium text-primary hover:underline">
+                              Sign in to view rates
+                            </Link>
+                          ) : (
+                            <>
                           {prescriber.hourly_rate && (
                             <span className="text-lg font-bold">
                               £{Number(prescriber.hourly_rate).toFixed(0)}
@@ -332,6 +338,8 @@ export default function Browse() {
                               £{Number(prescriber.daily_rate).toFixed(0)}
                               <span className="text-sm font-normal text-muted-foreground">/day</span>
                             </span>
+                          )}
+                            </>
                           )}
                         </div>
                         <Button size="sm" variant="ghost" className="text-primary">
