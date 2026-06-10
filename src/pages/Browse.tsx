@@ -74,11 +74,12 @@ export default function Browse() {
       'id, user_id, prescriber_type, bio, years_experience, location, regions_covered, specialisations, sectors, availability_types, verification_status, is_active, created_at, updated_at';
     const selectCols = user ? '*' : publicCols;
 
-    const { data: prescribersData, error } = await supabase
+    const { data: rawData, error } = await supabase
       .from('prescribers')
-      .select(selectCols)
+      .select(selectCols as '*')
       .eq('is_active', true)
       .eq('verification_status', 'approved');
+    const prescribersData = rawData as unknown as Prescriber[] | null;
 
     if (!error && prescribersData) {
       // Fetch profiles for each prescriber
