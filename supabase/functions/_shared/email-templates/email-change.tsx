@@ -61,16 +61,16 @@ const main = { backgroundColor: '#ffffff', fontFamily: "'Plus Jakarta Sans', 'In
 const container = { padding: '40px 25px' }
 const logoBox = {
   width: '36px', height: '36px', borderRadius: '10px',
-  backgroundColor: '#1a9e8f', textAlign: 'center' as const,
+  backgroundColor: '#7c3aed', textAlign: 'center' as const,
   verticalAlign: 'middle' as const,
 }
 const logoLetter = { color: '#ffffff', fontWeight: 'bold' as const, fontSize: '18px' }
 const logoText = { fontWeight: 'bold' as const, fontSize: '20px', color: '#141b2d' }
 const h1 = { fontSize: '24px', fontWeight: 'bold' as const, color: '#141b2d', margin: '0 0 20px' }
 const text = { fontSize: '15px', color: '#6b7280', lineHeight: '1.6', margin: '0 0 25px' }
-const link = { color: '#1a9e8f', textDecoration: 'underline' }
+const link = { color: '#7c3aed', textDecoration: 'underline' }
 const button = {
-  backgroundColor: '#1a9e8f', color: '#ffffff',
+  backgroundColor: '#7c3aed', color: '#ffffff',
   fontSize: '15px', borderRadius: '12px',
   padding: '14px 24px', textDecoration: 'none', fontWeight: '600' as const,
 }
