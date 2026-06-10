@@ -44,7 +44,7 @@ const main = { backgroundColor: '#ffffff', fontFamily: "'Plus Jakarta Sans', 'In
 const container = { padding: '40px 25px' }
 const logoBox = {
   width: '36px', height: '36px', borderRadius: '10px',
-  backgroundColor: '#1a9e8f', textAlign: 'center' as const,
+  backgroundColor: '#7c3aed', textAlign: 'center' as const,
   verticalAlign: 'middle' as const,
 }
 const logoLetter = { color: '#ffffff', fontWeight: 'bold' as const, fontSize: '18px' }
@@ -54,6 +54,6 @@ const text = { fontSize: '15px', color: '#6b7280', lineHeight: '1.6', margin: '0
 const codeStyle = {
   fontFamily: 'Courier, monospace',
   fontSize: '28px', fontWeight: 'bold' as const,
-  color: '#1a9e8f', margin: '0 0 30px', letterSpacing: '4px',
+  color: '#7c3aed', margin: '0 0 30px', letterSpacing: '4px',
 }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
