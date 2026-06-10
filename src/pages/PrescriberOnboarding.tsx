@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import Seo from '@/components/Seo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -278,7 +279,14 @@ export default function PrescriberOnboarding() {
   const idVerified = idResult?.is_valid_id && idResult?.name_matches;
 
   return (
-    <div className="min-h-screen gradient-hero py-12 px-4">
+    <>
+      <Seo
+        title="Prescriber Onboarding — Scribify"
+        description="Complete your Scribify prescriber onboarding: verify your GMC or GPhC registration, confirm your identity, and publish your availability."
+        path="/prescriber/onboarding"
+        noindex
+      />
+      <div className="min-h-screen gradient-hero py-12 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Progress */}
         <div className="flex items-center justify-center gap-2 mb-8">

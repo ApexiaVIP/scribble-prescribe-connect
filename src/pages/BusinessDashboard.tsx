@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Layout } from '@/components/layout/Layout';
+import Seo from '@/components/Seo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -154,6 +155,12 @@ export default function BusinessDashboard() {
 
   return (
     <Layout>
+      <Seo
+        title="Business Dashboard — Scribify"
+        description="Manage prescriber bookings, track expenditure, and hire verified UK healthcare professionals from your Scribify business dashboard."
+        path="/business/dashboard"
+        noindex
+      />
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
           <div>

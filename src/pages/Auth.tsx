@@ -286,6 +286,7 @@ export default function Auth() {
           <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
         </p>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
