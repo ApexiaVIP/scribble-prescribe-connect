@@ -31,32 +31,23 @@ const prescriberTypeLabels: Record<string, string> = {
 };
 
 export default function Landing() {
-  const { userRole } = useAuth();
+  const { user, userRole } = useAuth();
   const isBusiness = userRole === 'business';
 
   // Fetch available prescribers with profiles
   const { data: prescribers, isLoading } = useQuery({
-    queryKey: ['available-prescribers'],
+    queryKey: ['available-prescribers', !!user],
     queryFn: async () => {
       const today = new Date().toISOString().split('T')[0];
-      
-      // Get prescribers who have availability today or in the future
+
+      // Rates are restricted from anon (column-level RLS); only select them when signed in.
+      const cols = user
+        ? `id, prescriber_type, daily_rate, hourly_rate, location, verification_status, user_id, availability!inner ( date, availability_type, is_booked )`
+        : `id, prescriber_type, location, verification_status, user_id, availability!inner ( date, availability_type, is_booked )`;
+
       const { data: availablePrescribers, error } = await supabase
         .from('prescribers')
-        .select(`
-          id,
-          prescriber_type,
-          daily_rate,
-          hourly_rate,
-          location,
-          verification_status,
-          user_id,
-          availability!inner (
-            date,
-            availability_type,
-            is_booked
-          )
-        `)
+        .select(cols as any)
         .eq('is_active', true)
         .eq('verification_status', 'approved')
         .gte('availability.date', today)
@@ -66,17 +57,20 @@ export default function Landing() {
       if (error) throw error;
 
       // Get profiles for these prescribers
-      const userIds = availablePrescribers?.map(p => p.user_id) || [];
+      const list = (availablePrescribers ?? []) as any[];
+      const userIds = list.map((p) => p.user_id);
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, full_name, avatar_url')
         .in('user_id', userIds);
 
       // Merge profiles with prescribers
-      return availablePrescribers?.map(p => ({
+      return list.map((p) => ({
         ...p,
-        profile: profiles?.find(prof => prof.user_id === p.user_id)
-      })) || [];
+        daily_rate: p.daily_rate ?? null,
+        hourly_rate: p.hourly_rate ?? null,
+        profile: profiles?.find((prof) => prof.user_id === p.user_id),
+      }));
     }
   });
 
