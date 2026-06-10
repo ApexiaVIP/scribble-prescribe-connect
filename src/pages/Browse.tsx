@@ -49,7 +49,7 @@ const availabilityTypeLabels = {
 };
 
 export default function Browse() {
-  const { userRole } = useAuth();
+  const { user, userRole } = useAuth();
   const isBusiness = userRole === 'business';
   const [prescribers, setPrescribers] = useState<PrescriberWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,16 +64,22 @@ export default function Browse() {
 
   useEffect(() => {
     fetchPrescribers();
-  }, []);
+  }, [user]);
 
   const fetchPrescribers = async () => {
     setLoading(true);
-    
-    const { data: prescribersData, error } = await supabase
+
+    // Logged-out users cannot read registration_number or rates (column-level RLS).
+    const publicCols =
+      'id, user_id, prescriber_type, bio, years_experience, location, regions_covered, specialisations, sectors, availability_types, verification_status, is_active, created_at, updated_at';
+    const selectCols = user ? '*' : publicCols;
+
+    const { data: rawData, error } = await supabase
       .from('prescribers')
-      .select('*')
+      .select(selectCols as '*')
       .eq('is_active', true)
       .eq('verification_status', 'approved');
+    const prescribersData = rawData as unknown as Prescriber[] | null;
 
     if (!error && prescribersData) {
       // Fetch profiles for each prescriber
@@ -315,6 +321,12 @@ export default function Browse() {
 
                       <div className="flex items-center justify-between mt-4 pt-4 border-t">
                         <div>
+                          {!user ? (
+                            <Link to="/auth" className="text-sm font-medium text-primary hover:underline">
+                              Sign in to view rates
+                            </Link>
+                          ) : (
+                            <>
                           {prescriber.hourly_rate && (
                             <span className="text-lg font-bold">
                               £{Number(prescriber.hourly_rate).toFixed(0)}
@@ -326,6 +338,8 @@ export default function Browse() {
                               £{Number(prescriber.daily_rate).toFixed(0)}
                               <span className="text-sm font-normal text-muted-foreground">/day</span>
                             </span>
+                          )}
+                            </>
                           )}
                         </div>
                         <Button size="sm" variant="ghost" className="text-primary">
