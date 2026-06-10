@@ -49,7 +49,7 @@ const availabilityTypeLabels = {
 };
 
 export default function Browse() {
-  const { userRole } = useAuth();
+  const { user, userRole } = useAuth();
   const isBusiness = userRole === 'business';
   const [prescribers, setPrescribers] = useState<PrescriberWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,14 +64,19 @@ export default function Browse() {
 
   useEffect(() => {
     fetchPrescribers();
-  }, []);
+  }, [user]);
 
   const fetchPrescribers = async () => {
     setLoading(true);
-    
+
+    // Logged-out users cannot read registration_number or rates (column-level RLS).
+    const publicCols =
+      'id, user_id, prescriber_type, bio, years_experience, location, regions_covered, specialisations, sectors, availability_types, verification_status, is_active, created_at, updated_at';
+    const selectCols = user ? '*' : publicCols;
+
     const { data: prescribersData, error } = await supabase
       .from('prescribers')
-      .select('*')
+      .select(selectCols)
       .eq('is_active', true)
       .eq('verification_status', 'approved');
 
