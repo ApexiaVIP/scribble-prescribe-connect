@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Layout } from '@/components/layout/Layout';
+import Seo from '@/components/Seo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -100,6 +101,12 @@ export default function PrescriberDashboard() {
 
   return (
     <Layout>
+      <Seo
+        title="Prescriber Dashboard — Scribify"
+        description="Manage your Scribify availability, booking requests, and earnings as a verified UK prescriber."
+        path="/prescriber/dashboard"
+        noindex
+      />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
