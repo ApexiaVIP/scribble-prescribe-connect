@@ -664,6 +664,7 @@ export default function PrescriberOnboarding() {
           </Card>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
