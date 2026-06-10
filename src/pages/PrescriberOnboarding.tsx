@@ -288,6 +288,10 @@ export default function PrescriberOnboarding() {
       />
       <div className="min-h-screen gradient-hero py-12 px-4">
       <div className="max-w-2xl mx-auto">
+        <h1 className="text-center text-3xl font-bold text-foreground mb-8">
+          Prescriber Onboarding
+        </h1>
+
         {/* Progress */}
         <div className="flex items-center justify-center gap-2 mb-8">
           {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((s) => (

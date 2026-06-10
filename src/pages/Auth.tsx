@@ -155,12 +155,16 @@ export default function Auth() {
       <div className="min-h-screen gradient-hero flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         {/* Logo */}
-        <Link to="/" className="flex items-center justify-center space-x-2 mb-8">
+        <Link to="/" className="flex items-center justify-center space-x-2 mb-4">
           <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center">
             <span className="text-white font-bold text-xl">S</span>
           </div>
           <span className="font-bold text-2xl tracking-tight">Scribify</span>
         </Link>
+
+        <h1 className="text-center text-2xl font-bold text-foreground mb-8">
+          {mode === 'signin' ? 'Sign In to Scribify' : 'Create Your Account'}
+        </h1>
 
         <Card className="shadow-xl border-0">
           <CardHeader className="text-center pb-4">
