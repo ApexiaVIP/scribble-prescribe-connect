@@ -1,0 +1,10 @@
+# Scribify
+
+> UK's leading healthcare staffing marketplace connecting businesses with verified prescribers — GPs, pharmacists, nurse prescribers, and dentists. Book instantly, pay securely with escrow protection, and hire with confidence.
+
+Scribify is a two-sided marketplace for the UK healthcare sector. Businesses (clinics, pharmacies, NHS trusts, and private providers) can search, filter, and book verified prescribers for hourly, daily, or long-term shifts. Prescribers create profiles, set their availability and rates, and undergo automated verification of their professional registration (GMC, GPhC, NMC) and identity before they can accept bookings. All payments are held in escrow and released after the completed shift, with a transparent 2% platform fee for businesses.
+
+## Pages
+
+- [/](/): Homepage — overview of the marketplace, how it works, featured prescribers, and sign-up CTAs for businesses and prescribers.
+- [/browse](/browse): Search and filter verified prescribers by type (GP, pharmacist, nurse prescriber, dentist), location, availability, and sector.
