@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import Seo from '@/components/Seo';
+import { Helmet } from 'react-helmet-async';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -131,6 +132,26 @@ export default function Browse() {
         description="Search verified UK prescribers by location, specialty, and availability. Book GMC and GPhC checked professionals for hourly or daily shifts."
         path="/browse"
       />
+      <Helmet>
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          "name": "Browse Verified Prescribers",
+          "description": "Directory of verified UK prescribers available for hire on Scribify.",
+          "url": "https://scribble-prescribe-connect.lovable.app/browse",
+          "isPartOf": {
+            "@type": "WebSite",
+            "name": "Scribify",
+            "url": "https://scribble-prescribe-connect.lovable.app"
+          },
+          "about": {
+            "@type": "Service",
+            "name": "Prescriber staffing marketplace",
+            "areaServed": "United Kingdom",
+            "provider": { "@type": "Organization", "name": "Scribify" }
+          }
+        })}</script>
+      </Helmet>
       <div className="bg-muted/30 min-h-screen">
         {/* Header */}
         <div className="bg-background border-b">
